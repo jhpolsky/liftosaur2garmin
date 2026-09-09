@@ -180,6 +180,19 @@ class GarminAuthSession:
         self._mfa_url: str | None = None
         self._mfa_params: dict[str, str] | None = None
         self._mfa_headers: dict[str, str] | None = None
+        self.email: str | None = None
+        self._on_refresh: Any = None
+
+    def set_on_refresh(self, callback) -> None:
+        """Register a callback invoked whenever the DI token is refreshed.
+
+        Garmin rotates the refresh token on every use, so the previous one
+        stops working the moment a refresh succeeds. Without persisting the
+        new pair immediately, the next process (e.g. a scheduled sync run)
+        would reload the now-stale refresh token from storage and fail with
+        ``invalid_grant``.
+        """
+        self._on_refresh = callback
 
     @property
     def is_authenticated(self) -> bool:
@@ -280,6 +293,7 @@ class GarminAuthSession:
         self.csrf_token = auth.get("csrf_token")
         self.display_name = auth.get("display_name")
         self.full_name = auth.get("full_name")
+        self.email = payload.get("email") or self.email
         _load_cookies(self.session, auth.get("cookies"))
         if not self.is_authenticated:
             raise GarminConnectAuthenticationError("Garmin token payload does not contain usable auth state")
@@ -536,6 +550,11 @@ class GarminAuthSession:
         self.di_token = data.get("access_token")
         self.di_refresh_token = data.get("refresh_token", self.di_refresh_token)
         self.di_client_id = self._extract_client_id_from_jwt(self.di_token) or self.di_client_id
+        if self._on_refresh:
+            try:
+                self._on_refresh()
+            except Exception:
+                logger.warning("Failed to persist refreshed Garmin tokens", exc_info=True)
 
     def _load_profile(self) -> None:
         for path in ("/userprofile-service/socialProfile", "/userprofile-service/userprofile/user-settings"):
@@ -802,6 +821,9 @@ def get_client(
             raise
         auth.login(email, password, prompt_mfa=None)
         save_token_payload(auth.token_payload(email), token_dir=token_dir)
+
+    resolved_email = auth.email or email
+    auth.set_on_refresh(lambda: save_token_payload(auth.token_payload(resolved_email), token_dir=token_dir))
     return GarminClient(auth)
 
 

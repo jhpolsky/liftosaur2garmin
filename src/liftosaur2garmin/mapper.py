@@ -133,6 +133,7 @@ EXERCISE_TO_GARMIN: dict[str, tuple[int, int]] = {
     "Chin Up (Weighted)":                       (21, 4),   # pull_up / weighted_close_grip_chin_up
     "Kipping Pull Up":                          (21, 32),  # pull_up / kipping_pull_up
     "Kneeling Pulldown (band)":                 (21, 11),  # pull_up / kneeling_lat_pulldown
+    "Lat Pulldown":                             (21, 13),  # pull_up / lat_pulldown (no equipment suffix)
     "Lat Pulldown (Band)":                      (21, 13),  # pull_up / lat_pulldown (closest)
     "Lat Pulldown (Cable)":                     (21, 13),  # pull_up / lat_pulldown
     "Lat Pulldown (Machine)":                   (21, 13),  # pull_up / lat_pulldown (closest)
